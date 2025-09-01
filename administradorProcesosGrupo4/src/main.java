@@ -55,6 +55,27 @@ public class main extends javax.swing.JFrame {
         No_procesos.setFocusable(false);
         mostrar_procesos();
     }
+    
+    
+    //Cristofer
+    // procedimiento de limpieza de la tabla la restablece de a los parametros inisciales
+    void LimpiarTabla() {
+        jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
+                new Object[][]{},
+                new String[]{
+                    "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria"
+                }
+        ) {
+            boolean[] canEdit = new boolean[]{
+                false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
+    }
+    
 
     
     
