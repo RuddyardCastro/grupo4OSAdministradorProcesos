@@ -55,6 +55,15 @@ public class main extends javax.swing.JFrame {
         No_procesos.setFocusable(false);
         mostrar_procesos();
     }
+    //Gabriela
+ private void Alineacion_Columnas() {
+        DefaultTableCellRenderer Alinear = new DefaultTableCellRenderer();
+        Alinear.setHorizontalAlignment(SwingConstants.RIGHT);
+        jtabla_datos.getColumnModel().getColumn(1).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(2).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(3).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(4).setCellRenderer(Alinear);
+    }
     
     //David
     //procedimiento de lectura y de insercion de procesos en tabla
@@ -115,7 +124,7 @@ public class main extends javax.swing.JFrame {
     
 
     
-    
+    //Ruddyard Castro 9959-23-1409
       public void Matar_proceso() {
         modelo = (DefaultTableModel) jtabla_datos.getModel();
         String StrCelda = String.valueOf(modelo.getValueAt(jtabla_datos.getSelectedRow(), 0));
@@ -232,10 +241,12 @@ public class main extends javax.swing.JFrame {
     }//GEN-LAST:event_jIniciar_procesosActionPerformed
 
     private void jterminar_procesosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jterminar_procesosActionPerformed
-
-        Matar_proceso();//llama al procedimiento de terminar un proceso
-        LimpiarTabla();//limpia la tabla antes de colocar los procesos despues de haber terminado uno
-        mostrar_procesos();//coloca de nuevo los procesos que quedaron sin los que se acaban de terminar
+//llama al procedimiento de terminar un proceso
+        Matar_proceso();
+     //limpia la tabla antes de colocar los procesos despues de haber terminado uno   
+        LimpiarTabla();
+        //coloca de nuevo los procesos que quedaron sin los que se acaban de terminar
+        mostrar_procesos();
     }//GEN-LAST:event_jterminar_procesosActionPerformed
 
     private void No_procesosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_No_procesosActionPerformed
