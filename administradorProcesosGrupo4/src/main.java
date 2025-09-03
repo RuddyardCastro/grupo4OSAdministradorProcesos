@@ -56,6 +56,43 @@ public class main extends javax.swing.JFrame {
         mostrar_procesos();
     }
     
+    //David
+    //procedimiento de lectura y de insercion de procesos en tabla
+    private void mostrar_procesos() {
+        int ICol = 0, ICont = 0;
+        modelo = (DefaultTableModel) jtabla_datos.getModel();
+        Object[] Fila = new Object[5];
+        int i = 0;
+        String StrAuxi = "";
+        try {
+            String line;
+            Process p = Runtime.getRuntime().exec(System.getenv("windir") + "\\system32\\" + "tasklist.exe");
+            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            while ((line = input.readLine()) != null) {
+                if (i >= 4) {
+                    ICont = 0;
+                    while (ICont <= 4) {
+                        String[] sep = line.split("\\s+");
+                        if (ICont != 4) {
+                            Fila[ICont] = sep[ICont];
+                        } else {
+                            Fila[ICont] = sep[ICont] + " " + sep[ICont + 1];
+                        }
+                        ICont++;
+                    }
+                    modelo.addRow(Fila);
+                    jtabla_datos.setModel(modelo);
+                }
+                i++;
+            }
+            input.close();
+            Alineacion_Columnas();
+            No_procesos.setText(String.valueOf(i));
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+
+    }
     
     //Cristofer
     // procedimiento de limpieza de la tabla la restablece de a los parametros inisciales
