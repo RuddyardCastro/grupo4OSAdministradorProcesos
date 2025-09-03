@@ -55,6 +55,15 @@ public class main extends javax.swing.JFrame {
         No_procesos.setFocusable(false);
         mostrar_procesos();
     }
+    //Gabriela
+ private void Alineacion_Columnas() {
+        DefaultTableCellRenderer Alinear = new DefaultTableCellRenderer();
+        Alinear.setHorizontalAlignment(SwingConstants.RIGHT);
+        jtabla_datos.getColumnModel().getColumn(1).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(2).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(3).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(4).setCellRenderer(Alinear);
+    }
     
     //David
     //procedimiento de lectura y de insercion de procesos en tabla
