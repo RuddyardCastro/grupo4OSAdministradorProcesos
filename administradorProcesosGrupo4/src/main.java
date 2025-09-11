@@ -63,6 +63,8 @@ public class main extends javax.swing.JFrame {
         jtabla_datos.getColumnModel().getColumn(2).setCellRenderer(Alinear);
         jtabla_datos.getColumnModel().getColumn(3).setCellRenderer(Alinear);
         jtabla_datos.getColumnModel().getColumn(4).setCellRenderer(Alinear);
+        jtabla_datos.getColumnModel().getColumn(5).setCellRenderer(Alinear); // CPU
+        jtabla_datos.getColumnModel().getColumn(6).setCellRenderer(Alinear); // Disco
     }
     
     //David
@@ -70,7 +72,7 @@ public class main extends javax.swing.JFrame {
     private void mostrar_procesos() {
         int ICol = 0, ICont = 0;
         modelo = (DefaultTableModel) jtabla_datos.getModel();
-        Object[] Fila = new Object[5];
+        Object[] Fila = new Object[7]; //Ahora son 7 columnas
         int i = 0;
         String StrAuxi = "";
         try {
@@ -85,21 +87,36 @@ public class main extends javax.swing.JFrame {
                         if (ICont != 4) {
                             Fila[ICont] = sep[ICont];
                         } else {
-                            Fila[ICont] = sep[ICont] + " " + sep[ICont + 1];
+                        // convertir Memoria de KB a MB
+                        String mem = sep[ICont] + " " + sep[ICont + 1]; 
+                        try {
+                            mem = mem.replace("K", "").replace(",", "").trim();
+                            long kb = Long.parseLong(mem);
+                            long mb = kb / 1024;
+                            Fila[ICont] = mb + " MB"; //Memoria en MB
+                        } catch (NumberFormatException e) {
+                            Fila[ICont] = "N/A"; //Si falla conversión
                         }
-                        ICont++;
                     }
-                    modelo.addRow(Fila);
-                    jtabla_datos.setModel(modelo);
+                    ICont++;
                 }
-                i++;
+
+                // CPU y Disco simulados 
+                Fila[5] = (int) (Math.random() * 50) + " %"; // CPU %
+                Fila[6] = Math.round(Math.random() * 10 * 100.0) / 100.0 + " MB/s"; // Disco
+
+                modelo.addRow(Fila);
+                jtabla_datos.setModel(modelo);
             }
-            input.close();
-            Alineacion_Columnas();
-            No_procesos.setText(String.valueOf(i));
-        } catch (Exception err) {
-            err.printStackTrace();
+            i++;
         }
+        input.close();
+        Alineacion_Columnas();
+        No_procesos.setText(String.valueOf(i));
+    } catch (Exception err) {
+        err.printStackTrace();
+    }
+
 
     }
     
@@ -109,7 +126,7 @@ public class main extends javax.swing.JFrame {
         jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
                 new Object[][]{},
                 new String[]{
-                    "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria"
+                    "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria, CPU(%), Disco (MB/s)"
                 }
         ) {
             boolean[] canEdit = new boolean[]{
@@ -166,11 +183,11 @@ public class main extends javax.swing.JFrame {
 
             },
             new String [] {
-                "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria"
+                "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria", "CPU (%)", "Disco (MB/s)"
             }
         ) {
             boolean[] canEdit = new boolean [] {
-                false, false, false, false, false
+                false, false, false, false, false, false, false
             };
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
