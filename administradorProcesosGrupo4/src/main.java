@@ -152,7 +152,7 @@ public class main extends javax.swing.JFrame {
 
 
     }
-    
+    //Anderson Rodriguez
     private void iniciarActualizacionMemoria() {
     Timer timer = new Timer(1000, new ActionListener() {
         @Override
@@ -208,7 +208,7 @@ public class main extends javax.swing.JFrame {
 }
 
     
-    
+    //Anderson Rodriguez
     private DefaultTableCellRenderer getColorRenderer() {
         return new DefaultTableCellRenderer() {
             @Override
@@ -253,7 +253,7 @@ public class main extends javax.swing.JFrame {
             }
         };
     }
-    
+    //Anderson Rodriguez
     private void iniciarActualizacionRed() {
     Timer timer = new Timer(1000, new ActionListener() {
         @Override
@@ -280,7 +280,7 @@ public class main extends javax.swing.JFrame {
     });
     timer.start();
 }
-    
+    //Anderson Rodriguez
     private Set<Integer> obtenerPIDsDesdeNetstat() {
     Set<Integer> pids = new HashSet<>();
     try {
