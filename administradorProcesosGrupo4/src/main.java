@@ -8,15 +8,22 @@
 
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import javax.swing.SwingConstants;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
@@ -67,6 +74,7 @@ public class main extends javax.swing.JFrame {
         jtabla_datos.getColumnModel().getColumn(4).setCellRenderer(Alinear);
         jtabla_datos.getColumnModel().getColumn(5).setCellRenderer(Alinear); // CPU
         jtabla_datos.getColumnModel().getColumn(6).setCellRenderer(Alinear); // Disco
+        jtabla_datos.getColumnModel().getColumn(7).setCellRenderer(Alinear); //Red
     }
     
     //David
@@ -74,53 +82,230 @@ public class main extends javax.swing.JFrame {
     private void mostrar_procesos() {
         int ICol = 0, ICont = 0;
         modelo = (DefaultTableModel) jtabla_datos.getModel();
-        Object[] Fila = new Object[7]; //Ahora son 7 columnas
+        Object[] Fila = new Object[8]; //Ahora son 8 columnas
         int i = 0;
         String StrAuxi = "";
         try {
             String line;
             Process p = Runtime.getRuntime().exec(System.getenv("windir") + "\\system32\\" + "tasklist.exe");
             BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            Set<Integer> procesosConRed = obtenerPIDsDesdeNetstat();
             while ((line = input.readLine()) != null) {
                 if (i >= 4) {
                     ICont = 0;
+                    String[] sep = line.split("\\s+");
                     while (ICont <= 4) {
-                        String[] sep = line.split("\\s+");
+                        //String[] sep = line.split("\\s+");
                         if (ICont != 4) {
                             Fila[ICont] = sep[ICont];
                         } else {
-                        // convertir Memoria de KB a MB
-                        String mem = sep[ICont] + " " + sep[ICont + 1]; 
+                            // convertir Memoria de KB a MB
+                            String mem = sep[ICont] + " " + sep[ICont + 1]; 
+                            try {
+                                mem = mem.replace("KB", "").replace(",", "").trim();
+                                long kb = Long.parseLong(mem);
+                                long mb = kb / 1024;
+                                Fila[ICont] = mb + " MB"; //Memoria en MB
+                            } catch (NumberFormatException e) {
+                                Fila[ICont] = "N/A"; //Si falla conversión
+                            }
+                        }
+                        ICont++;
+                    }
+
+                    // CPU y Disco simulados 
+                    Fila[5] = (int) (Math.random() * 50) + " %"; // CPU %
+                    Fila[6] = Math.round(Math.random() * 10 * 100.0) / 100.0 + " MB/s"; // Disco
+                    
+                    int pid = -1;
+                    if (sep.length > 1) {
                         try {
-                            mem = mem.replace("K", "").replace(",", "").trim();
-                            long kb = Long.parseLong(mem);
-                            long mb = kb / 1024;
-                            Fila[ICont] = mb + " MB"; //Memoria en MB
+                            pid = Integer.parseInt(sep[1]);
                         } catch (NumberFormatException e) {
-                            Fila[ICont] = "N/A"; //Si falla conversión
+                            pid = -1; // Valor inválido
                         }
                     }
-                    ICont++;
+                    
+                    if (pid != -1 && procesosConRed.contains(pid)) {
+                        double redSimulada = 0.01 + Math.random() * (5.00 - 0.01); // Entre 0.01 y 5.00 Mbps
+                        Fila[7] = String.format("%.2f Mbps", redSimulada);
+                    } else {
+                        Fila[7] = "0.00 Mbps";
+                    }
+
+                    modelo.addRow(Fila);
+                    jtabla_datos.setModel(modelo);
+                }
+                i++;
+            }
+            input.close();
+            Alineacion_Columnas();
+            for (int j = 0; j < jtabla_datos.getColumnCount(); j++) {
+                jtabla_datos.getColumnModel().getColumn(j).setCellRenderer(getColorRenderer());
+            }
+            No_procesos.setText(String.valueOf(i));
+            iniciarActualizacionRed();
+            iniciarActualizacionMemoria();
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+
+
+    }
+    
+    private void iniciarActualizacionMemoria() {
+    Timer timer = new Timer(1000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                Process p = Runtime.getRuntime().exec(System.getenv("windir") + "\\system32\\" + "tasklist.exe");
+                BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                String line;
+                Map<Integer, String> memoriaPorPID = new HashMap<>();
+
+                int i = 0;
+                while ((line = input.readLine()) != null) {
+                    if (i >= 4) {
+                        String[] sep = line.trim().split("\\s+");
+                        if (sep.length >= 6) {
+                            try {
+                                int pid = Integer.parseInt(sep[1]);
+                                String mem = sep[4] + " " + sep[5]; // Ejemplo: "12,345 KB"
+                                mem = mem.replace("KB", "").replace(",", "").trim();
+                                long kb = Long.parseLong(mem);
+                                long mb = kb / 1024;
+                                memoriaPorPID.put(pid, mb + " MB");
+                            } catch (NumberFormatException ex) {
+                                // Ignorar si no se puede convertir
+                            }
+                        }
+                    }
+                    i++;
+                }
+                input.close();
+
+                // Actualizar la tabla
+                for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
+                    Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
+                    int pid = -1;
+                    try {
+                        pid = Integer.parseInt(pidObj.toString());
+                    } catch (NumberFormatException ex) {
+                        pid = -1;
+                    }
+
+                    if (pid != -1 && memoriaPorPID.containsKey(pid)) {
+                        jtabla_datos.setValueAt(memoriaPorPID.get(pid), fila, 4); // Columna 4 = Memoria
+                    }
                 }
 
-                // CPU y Disco simulados 
-                Fila[5] = (int) (Math.random() * 50) + " %"; // CPU %
-                Fila[6] = Math.round(Math.random() * 10 * 100.0) / 100.0 + " MB/s"; // Disco
-
-                modelo.addRow(Fila);
-                jtabla_datos.setModel(modelo);
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
-            i++;
         }
-        input.close();
-        Alineacion_Columnas();
-        No_procesos.setText(String.valueOf(i));
-    } catch (Exception err) {
-        err.printStackTrace();
-    }
+    });
+    timer.start();
+}
 
+    
+    
+    private DefaultTableCellRenderer getColorRenderer() {
+        return new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
 
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                
+                if (isSelected) {
+                    // Si la fila está seleccionada, usar los colores de selección por defecto
+                    c.setBackground(table.getSelectionBackground());
+                    c.setForeground(table.getSelectionForeground());
+                    return c;
+                }
+
+                if (column == 4) { // Solo aplicar estilo si es la columna de uso de memoria
+                    String usoMemoriaStr = value.toString().replace("MB", "").replace(",", "").trim();
+                
+                     //System.out.println("Memoria: " + usoMemoriaStr);
+
+                    try {
+                        int usoMemoria = Integer.parseInt(usoMemoriaStr);
+                        if (usoMemoria > 100) { // Umbral: 100 MB
+                            c.setBackground(new Color(70, 130, 180)); // azul fuerte
+                            c.setForeground(Color.BLACK);
+                        } else {
+                            c.setBackground(new Color(173, 216, 230));
+                            c.setForeground(Color.BLACK);
+                        }
+                    } catch (NumberFormatException e) {
+                        c.setBackground(Color.WHITE);
+                        c.setForeground(Color.BLACK);
+                    }
+                } else {
+                    // Para otras columnas, mantener estilo normal
+                    c.setBackground(Color.WHITE);
+                    c.setForeground(Color.BLACK);
+                }
+
+                return c;
+            }
+        };
     }
+    
+    private void iniciarActualizacionRed() {
+    Timer timer = new Timer(1000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Set<Integer> procesosConRed = obtenerPIDsDesdeNetstat(); // Actualizar PIDs con conexión activa
+
+            for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
+                Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
+                int pid = -1;
+                try {
+                    pid = Integer.parseInt(pidObj.toString());
+                } catch (NumberFormatException ex) {
+                    pid = -1;
+                }
+
+                if (pid != -1 && procesosConRed.contains(pid)) {
+                    double redSimulada = 0.01 + Math.random() * (5.00 - 0.01);
+                    jtabla_datos.setValueAt(String.format("%.2f Mbps", redSimulada), fila, 7); // Columna 7 = Red
+                } else {
+                    jtabla_datos.setValueAt("0.00 Mbps", fila, 7);
+                }
+            }
+        }
+    });
+    timer.start();
+}
+    
+    private Set<Integer> obtenerPIDsDesdeNetstat() {
+    Set<Integer> pids = new HashSet<>();
+    try {
+        Process proceso = Runtime.getRuntime().exec("netstat -ano");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+        String linea;
+        while ((linea = reader.readLine()) != null) {
+            linea = linea.trim();
+            if (linea.startsWith("TCP") || linea.startsWith("UDP")) {
+                String[] partes = linea.split("\\s+");
+                if (partes.length >= 5) {
+                    try {
+                        int pid = Integer.parseInt(partes[partes.length - 1]);
+                        pids.add(pid);
+                    } catch (NumberFormatException e) {
+                        // Ignorar líneas con PID no válido
+                    }
+                }
+            }
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+    return pids;
+}
     
     //Cristofer
     // procedimiento de limpieza de la tabla la restablece de a los parametros inisciales
@@ -128,11 +313,11 @@ public class main extends javax.swing.JFrame {
         jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
                 new Object[][]{},
                 new String[]{
-                    "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria, CPU(%), Disco (MB/s)"
+                    "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria, CPU(%), Disco (MB/s)", "Red (Mbps)"
                 }
         ) {
             boolean[] canEdit = new boolean[]{
-                false, false, false, false, false
+                false, false, false, false, false, false, false, false
             };
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
@@ -255,11 +440,11 @@ private String ejecutarComando(String comando, String encabezado) {
 
             },
             new String [] {
-                "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria", "CPU (%)", "Disco (MB/s)"
+                "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria", "CPU (%)", "Disco (MB/s)", "Red (%)"
             }
         ) {
             boolean[] canEdit = new boolean [] {
-                false, false, false, false, false, false, false
+                false, false, false, false, false, false, false, false
             };
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
