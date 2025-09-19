@@ -102,7 +102,8 @@ public class main extends javax.swing.JFrame {
                             // convertir Memoria de KB a MB
                             String mem = sep[ICont] + " " + sep[ICont + 1]; 
                             try {
-                                mem = mem.replace("KB", "").replace(",", "").trim();
+                                //mem = mem.replace("KB", "").replace(",", "").trim();
+                                mem = mem.replaceAll("[^0-9]", "");
                                 long kb = Long.parseLong(mem);
                                 long mb = kb / 1024;
                                 Fila[ICont] = mb + " MB"; //Memoria en MB
@@ -171,7 +172,8 @@ public class main extends javax.swing.JFrame {
                             try {
                                 int pid = Integer.parseInt(sep[1]);
                                 String mem = sep[4] + " " + sep[5]; // Ejemplo: "12,345 KB"
-                                mem = mem.replace("KB", "").replace(",", "").trim();
+                                mem = mem.replaceAll("[^0-9]", "");
+                                //mem = mem.replace("KB", "").replace(",", "").trim();
                                 long kb = Long.parseLong(mem);
                                 long mb = kb / 1024;
                                 memoriaPorPID.put(pid, mb + " MB");
