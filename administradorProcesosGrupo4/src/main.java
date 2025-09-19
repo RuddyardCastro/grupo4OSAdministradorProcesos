@@ -102,7 +102,14 @@ public class main extends javax.swing.JFrame {
                             // convertir Memoria de KB a MB
                             String mem = sep[ICont] + " " + sep[ICont + 1]; 
                             try {
-                                mem = mem.replace("KB", "").replace(",", "").trim();
+                                mem = mem.replaceAll("[^0-9]", "");
+                                if (!mem.isEmpty()) {
+                                    long kb = Long.parseLong(mem);
+                                    long mb = kb / 1024;
+                                    Fila[ICont] = mb + " MB";
+                                } else {
+                                    Fila[ICont] = "N/A";
+                                }
                                 long kb = Long.parseLong(mem);
                                 long mb = kb / 1024;
                                 Fila[ICont] = mb + " MB"; //Memoria en MB
@@ -309,22 +316,24 @@ public class main extends javax.swing.JFrame {
     
     //Cristofer
     // procedimiento de limpieza de la tabla la restablece de a los parametros inisciales
-    void LimpiarTabla() {
-        jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
-                new Object[][]{},
-                new String[]{
-                    "Nombre", "PID", "Tipo de sesión ", "Número de sesión", "Uso de memoria, CPU(%), Disco (MB/s)", "Red (Mbps)"
-                }
-        ) {
-            boolean[] canEdit = new boolean[]{
-                false, false, false, false, false, false, false, false
-            };
-
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                return canEdit[columnIndex];
+  void LimpiarTabla() {
+    jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
+            new Object[][]{},
+            new String[]{
+                "Nombre", "PID", "Tipo de sesión", "Número de sesión", 
+                "Uso de memoria", "CPU (%)", "Disco (MB/s)", "Red (%)"
             }
-        });
-    }
+    ) {
+        boolean[] canEdit = new boolean[]{
+            false, false, false, false, false, false, false, false
+        };
+
+        public boolean isCellEditable(int rowIndex, int columnIndex) {
+            return canEdit[columnIndex];
+        }
+    });
+}
+
     
 
     
