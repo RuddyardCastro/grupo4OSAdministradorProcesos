@@ -77,7 +77,7 @@ public class main extends javax.swing.JFrame {
         jtabla_datos.getColumnModel().getColumn(7).setCellRenderer(Alinear); //Red
     }
     
-    //David
+    //David Rojas
     //procedimiento de lectura y de insercion de procesos en tabla
     private void mostrar_procesos() {
         int ICol = 0, ICont = 0;
@@ -156,7 +156,6 @@ public class main extends javax.swing.JFrame {
         } catch (Exception err) {
             err.printStackTrace();
         }
-
 
     }
     //Anderson Rodriguez
@@ -439,6 +438,8 @@ private String ejecutarComando(String comando, String encabezado) {
         jLabel2 = new javax.swing.JLabel();
         No_procesos = new javax.swing.JTextField();
         btnEspesifiaciones = new javax.swing.JButton();
+        btnOrdenar = new javax.swing.JButton();
+        btnBuscar = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -491,23 +492,33 @@ private String ejecutarComando(String comando, String encabezado) {
             }
         });
 
+        btnOrdenar.setText("Filtrar Orden");
+
+        btnBuscar.setText("Buscar");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(34, 34, 34)
-                .addComponent(jLabel2)
-                .addGap(18, 18, 18)
-                .addComponent(No_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 167, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(27, 27, 27)
-                .addComponent(jIniciar_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(btnSuspenderProceso, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(31, 31, 31)
-                .addComponent(btnEspesifiaciones)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(btnOrdenar)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnBuscar))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel2)
+                        .addGap(18, 18, 18)
+                        .addComponent(No_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 167, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(27, 27, 27)
+                        .addComponent(jIniciar_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(btnSuspenderProceso, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(31, 31, 31)
+                        .addComponent(btnEspesifiaciones)))
                 .addContainerGap(11, Short.MAX_VALUE))
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -520,7 +531,11 @@ private String ejecutarComando(String comando, String encabezado) {
                     .addComponent(jIniciar_procesos)
                     .addComponent(btnSuspenderProceso)
                     .addComponent(btnEspesifiaciones))
-                .addGap(29, 29, 29))
+                .addGap(1, 1, 1)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnOrdenar)
+                    .addComponent(btnBuscar))
+                .addContainerGap())
         );
 
         pack();
@@ -594,10 +609,73 @@ private String ejecutarComando(String comando, String encabezado) {
             }
         });
     }
+    
+    //David Rojas
+    //Ordenar de mayor a menor en orden Alfabetico
+    private void btnOrdenarActionPerformed(java.awt.event.ActionEvent evt) {
+    DefaultTableModel model = (DefaultTableModel) jtabla_datos.getModel();
+
+    java.util.List<Object[]> datos = new java.util.ArrayList<>();
+    for (int i = 0; i < model.getRowCount(); i++) {
+        Object[] fila = new Object[model.getColumnCount()];
+        for (int j = 0; j < model.getColumnCount(); j++) {
+            fila[j] = model.getValueAt(i, j);
+        }
+        datos.add(fila);
+    }
+
+    datos.sort((a, b) -> {
+        // Columna 4 = Uso de memoria (ej: "123 MB")
+        int memA = extraerMB(a[4].toString());
+        int memB = extraerMB(b[4].toString());
+
+        if (memB != memA) {
+            return Integer.compare(memB, memA); // Mayor a menor
+        }
+        // Si la memoria es igual, orden alfabético por Nombre (columna 0)
+        return a[0].toString().compareToIgnoreCase(b[0].toString());
+    });
+
+    // Limpiar y volver a insertar
+    model.setRowCount(0);
+    for (Object[] fila : datos) {
+        model.addRow(fila);
+    }
+}
+
+    // Método auxiliar para extraer solo el número en MB
+    private int extraerMB(String texto) {
+    try {
+        return Integer.parseInt(texto.replaceAll("[^0-9]", ""));
+    } catch (NumberFormatException e) {
+        return 0;
+    }
+}
+
+    //David Rojas
+    //Opcion de busqueda
+    private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {
+    String texto = JOptionPane.showInputDialog(this, "Ingrese texto a buscar en Nombre de proceso:");
+    if (texto == null || texto.trim().isEmpty()) return;
+
+    texto = texto.toLowerCase();
+    jtabla_datos.clearSelection();
+
+    for (int i = 0; i < jtabla_datos.getRowCount(); i++) {
+        String nombre = jtabla_datos.getValueAt(i, 0).toString().toLowerCase();
+        if (nombre.contains(texto)) {
+            // Selecciona la fila encontrada
+            jtabla_datos.addRowSelectionInterval(i, i);
+        }
+    }
+}
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField No_procesos;
+    private javax.swing.JButton btnBuscar;
     private javax.swing.JButton btnEspesifiaciones;
+    private javax.swing.JButton btnOrdenar;
     private javax.swing.JButton btnSuspenderProceso;
     private javax.swing.JButton jIniciar_procesos;
     private javax.swing.JLabel jLabel2;
