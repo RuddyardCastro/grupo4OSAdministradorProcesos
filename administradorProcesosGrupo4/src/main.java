@@ -9,6 +9,10 @@
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -16,11 +20,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
@@ -62,8 +70,107 @@ public class main extends javax.swing.JFrame {
         getContentPane().setBackground(Color.WHITE);
         this.setLocationRelativeTo(null);
         No_procesos.setFocusable(false);
+        btnOrdenar.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            btnOrdenarActionPerformed(evt);
+        }
+    });
+    
+    btnBuscar.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            btnBuscarActionPerformed(evt);
+        }
+    });
+    
+    
         mostrar_procesos();
     }
+    
+    
+    
+    //metodo de grafica Ruddyard 
+    public static Map<String, Double> obtenerProcesosDesdeWindows() {
+    Map<String, Double> procesos = new LinkedHashMap<>();
+    try {
+        Process proceso = Runtime.getRuntime().exec("cmd /c tasklist /FO CSV /NH");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+        String linea;
+        while ((linea = reader.readLine()) != null) {
+            String[] partes = linea.split("\",\"");
+            if (partes.length >= 5) {
+                String nombre = partes[0].replace("\"", "").trim();
+                String memoriaStr = partes[4].replace("\"", "").replace("K", "").replace(",", "").replace(".", "").trim();
+                if (!memoriaStr.isEmpty()) {
+                    try {
+                        double memoriaKB = Double.parseDouble(memoriaStr);
+                        double memoriaMB = memoriaKB / 1024;
+                        if (memoriaMB > 0) {
+                            procesos.put(nombre, memoriaMB);
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+    return procesos;
+}
+    
+    
+   
+    
+    public static Map<String, Double> obtenerProcesosDiscoDesdeWindows() {
+    Map<String, Double> procesos = new LinkedHashMap<>();
+    try {
+        Process proceso = Runtime.getRuntime().exec("cmd /c wmic process get name,readoperationcount,writeoperationcount /format:csv");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+        String linea;
+        
+        // Saltar encabezados
+        reader.readLine();
+        
+        while ((linea = reader.readLine()) != null) {
+            if (linea.trim().isEmpty()) continue;
+            
+            String[] partes = linea.split(",");
+            if (partes.length >= 4) {
+                String nombre = partes[1].trim();
+                String readOpsStr = partes[2].trim();
+                String writeOpsStr = partes[3].trim();
+                
+                if (!readOpsStr.isEmpty() && !writeOpsStr.isEmpty()) {
+                    try {
+                        long readOps = Long.parseLong(readOpsStr);
+                        long writeOps = Long.parseLong(writeOpsStr);
+                        double totalOps = readOps + writeOps;
+                        
+                        // Convertir operaciones a MB (aproximación)
+                        double diskMB = totalOps / 1024.0;
+                        
+                        if (diskMB > 0) {
+                            procesos.put(nombre, diskMB);
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+    return procesos;
+}
+   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     //Gabriela
  private void Alineacion_Columnas() {
         DefaultTableCellRenderer Alinear = new DefaultTableCellRenderer();
@@ -77,7 +184,7 @@ public class main extends javax.swing.JFrame {
         jtabla_datos.getColumnModel().getColumn(7).setCellRenderer(Alinear); //Red
     }
     
-    //David
+    //David Rojas
     //procedimiento de lectura y de insercion de procesos en tabla
     private void mostrar_procesos() {
         int ICol = 0, ICont = 0;
@@ -156,7 +263,6 @@ public class main extends javax.swing.JFrame {
         } catch (Exception err) {
             err.printStackTrace();
         }
-
 
     }
     //Anderson Rodriguez
@@ -358,7 +464,7 @@ private Map<String, String> obtenerInformacionSistema() {
     Map<String, String> info = new HashMap<>();
 
     try {
-        // Device name
+        // Nombre del dispositivo 
         info.put("DeviceName", System.getenv("COMPUTERNAME"));
 
         // Procesador
@@ -382,17 +488,17 @@ info.put("L3 Cache", ejecutarComando("wmic cpu get L3CacheSize", "L3CacheSize") 
             }
         }
 // Disco principal
-String diskSize = ejecutarComando("wmic diskdrive get Size", "Size");
-if (!diskSize.isEmpty()) {
-    try {
-        long sizeBytes = Long.parseLong(diskSize);
-        double sizeGB = sizeBytes / (1024.0 * 1024.0 * 1024.0);
-        info.put("Disk Capacity", String.format("%.0f GB", sizeGB));
-    } catch (NumberFormatException e) {
-        info.put("Disk Capacity", "N/A");
-    }
-}
-info.put("Disk Type", ejecutarComando("wmic diskdrive get MediaType", "MediaType"));
+        String diskSize = ejecutarComando("wmic diskdrive get Size", "Size");
+        if (!diskSize.isEmpty()) {
+            try {
+                long sizeBytes = Long.parseLong(diskSize);
+                double sizeGB = sizeBytes / (1024.0 * 1024.0 * 1024.0);
+                info.put("Disk Capacity", String.format("%.0f GB", sizeGB));
+            } catch (NumberFormatException e) {
+                info.put("Disk Capacity", "N/A");
+            }
+        }
+        info.put("Disk Type", ejecutarComando("wmic diskdrive get MediaType", "MediaType"));
         // Device ID
         info.put("DeviceID", ejecutarComando("wmic csproduct get uuid", "UUID"));
 
@@ -439,6 +545,11 @@ private String ejecutarComando(String comando, String encabezado) {
         jLabel2 = new javax.swing.JLabel();
         No_procesos = new javax.swing.JTextField();
         btnEspesifiaciones = new javax.swing.JButton();
+        btnOrdenar = new javax.swing.JButton();
+        btnBuscar = new javax.swing.JButton();
+        btnOrdenarMenor = new javax.swing.JButton();
+        btnGraficaMem = new javax.swing.JButton();
+        btnGraficaDisco = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -491,28 +602,65 @@ private String ejecutarComando(String comando, String encabezado) {
             }
         });
 
+        btnOrdenar.setText("Filtrar Orden");
+
+        btnBuscar.setText("Buscar");
+
+        btnOrdenarMenor.setText("Filtrar Orden Menor ");
+        btnOrdenarMenor.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnOrdenarMenorActionPerformed(evt);
+            }
+        });
+
+        btnGraficaMem.setText("Grafica  Memoria");
+        btnGraficaMem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGraficaMemActionPerformed(evt);
+            }
+        });
+
+        btnGraficaDisco.setText("Grafica  Disco");
+        btnGraficaDisco.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGraficaDiscoActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(34, 34, 34)
-                .addComponent(jLabel2)
-                .addGap(18, 18, 18)
-                .addComponent(No_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 167, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(27, 27, 27)
-                .addComponent(jIniciar_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(btnSuspenderProceso, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(31, 31, 31)
-                .addComponent(btnEspesifiaciones)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(btnOrdenar)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnBuscar)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnOrdenarMenor)
+                        .addGap(44, 44, 44)
+                        .addComponent(btnGraficaMem)
+                        .addGap(18, 18, 18)
+                        .addComponent(btnGraficaDisco))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel2)
+                        .addGap(18, 18, 18)
+                        .addComponent(No_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 167, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(27, 27, 27)
+                        .addComponent(jIniciar_procesos, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(btnSuspenderProceso, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(31, 31, 31)
+                        .addComponent(btnEspesifiaciones)))
                 .addContainerGap(11, Short.MAX_VALUE))
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 478, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 377, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
@@ -520,7 +668,20 @@ private String ejecutarComando(String comando, String encabezado) {
                     .addComponent(jIniciar_procesos)
                     .addComponent(btnSuspenderProceso)
                     .addComponent(btnEspesifiaciones))
-                .addGap(29, 29, 29))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(1, 1, 1)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(btnOrdenar)
+                            .addComponent(btnBuscar)
+                            .addComponent(btnOrdenarMenor)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnGraficaMem))
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(btnGraficaDisco)))
+                .addGap(96, 96, 96))
         );
 
         pack();
@@ -560,6 +721,196 @@ private String ejecutarComando(String comando, String encabezado) {
         
     }//GEN-LAST:event_btnEspesifiacionesActionPerformed
 
+    private void btnOrdenarMenorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOrdenarMenorActionPerformed
+        // TODO add your handling code here:
+        // Ruddayrd castro 
+        DefaultTableModel model = (DefaultTableModel) jtabla_datos.getModel();
+
+    // Verificar que hay datos
+    if (model.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "No hay datos para ordenar");
+        return;
+    }
+
+    java.util.List<Object[]> datos = new java.util.ArrayList<>();
+    for (int i = 0; i < model.getRowCount(); i++) {
+        Object[] fila = new Object[model.getColumnCount()];
+        for (int j = 0; j < model.getColumnCount(); j++) {
+            fila[j] = model.getValueAt(i, j);
+        }
+        datos.add(fila);
+    }
+
+    // Ordenar de menor a mayor uso de memoria
+    datos.sort((a, b) -> {
+        try {
+            // Manejar valores nulos
+            if (a[4] == null || b[4] == null) {
+                return a[4] == null ? -1 : 1; // Los nulos van primero
+            }
+            
+            int memA = extraerMB(a[4].toString());
+            int memB = extraerMB(b[4].toString());
+
+            if (memA != memB) {
+                return Integer.compare(memA, memB); // Menor a mayor
+            }
+            
+            // Si la memoria es igual, orden alfabético por Nombre
+            if (a[0] == null || b[0] == null) {
+                return a[0] == null ? -1 : 1;
+            }
+            return a[0].toString().compareToIgnoreCase(b[0].toString());
+            
+        } catch (Exception e) {
+            return 0; // En caso de error, mantener orden actual
+        }
+    });
+
+    // Limpiar y volver a insertar
+    model.setRowCount(0);
+    for (Object[] fila : datos) {
+        model.addRow(fila);
+    }
+    }//GEN-LAST:event_btnOrdenarMenorActionPerformed
+
+    private void btnGraficaMemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGraficaMemActionPerformed
+        // TODO add your handling code here:
+        // Ruddyard Castro 9959-59-23-1409
+        
+         JFrame ventana = new JFrame("Distribución de Memoria");
+    ventana.setSize(700, 600);
+    ventana.setLocationRelativeTo(null);
+    ventana.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+    JPanel panelGrafica = new JPanel() {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Obtener procesos reales desde Windows
+            Map<String, Double> procesos =obtenerProcesosDesdeWindows();
+
+            // Si no hay datos reales, generar simulados
+            if (procesos.isEmpty()) {
+                procesos = new LinkedHashMap<>();
+                procesos.put("operaApp.exe", 320.0);
+                procesos.put("FChrome.exe", 210.0);
+                procesos.put("TestJava.exe", 180.0);
+                procesos.put("DummyExplorer.exe", 95.0);
+                procesos.put("FakeService.exe", 60.0);
+            }
+
+            List<Map.Entry<String, Double>> topProcesos = procesos.entrySet().stream()
+                    .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                    .limit(10)
+                    .toList();
+
+            double total = topProcesos.stream().mapToDouble(Map.Entry::getValue).sum();
+
+            int x = 150, y = 100, ancho = 300, alto = 300;
+            double anguloInicio = 0;
+            int i = 0;
+
+            for (Map.Entry<String, Double> entry : topProcesos) {
+                double porcentaje = entry.getValue() / total;
+                double angulo = porcentaje * 360;
+
+                g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+                g2.fillArc(x, y, ancho, alto, (int) anguloInicio, (int) angulo);
+                anguloInicio += angulo;
+                i++;
+            }
+
+            // Leyenda
+            int leyendaY = 420;
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            i = 0;
+            for (Map.Entry<String, Double> entry : topProcesos) {
+                g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+                g2.fillRect(30, leyendaY, 15, 15);
+                g2.setColor(Color.BLACK);
+                g2.drawString(entry.getKey() + String.format(" (%.1f MB)", entry.getValue()), 50, leyendaY + 12);
+                leyendaY += 20;
+                i++;
+            }
+        }
+        
+        };
+
+    ventana.add(panelGrafica);
+    ventana.setVisible(true);
+
+        
+    }//GEN-LAST:event_btnGraficaMemActionPerformed
+
+    private void btnGraficaDiscoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGraficaDiscoActionPerformed
+        // TODO add your handling code here:
+        
+   JFrame ventana = new JFrame("Distribución de Uso de Disco");
+ventana.setSize(700, 600);
+ventana.setLocationRelativeTo(null);
+ventana.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+JPanel panelGrafica = new JPanel() {
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        Map<String, Double> procesos = obtenerProcesosDiscoDesdeWindows();
+
+        if (procesos.isEmpty()) {
+            procesos = new LinkedHashMap<>();
+            procesos.put("chrome.exe", 15.5);
+            procesos.put("sqlservr.exe", 8.2);
+            procesos.put("javaw.exe", 5.7);
+            procesos.put("explorer.exe", 3.1);
+            procesos.put("svchost.exe", 2.8);
+        }
+
+        List<Map.Entry<String, Double>> topProcesos = procesos.entrySet().stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(10)
+                .toList();
+
+        double total = topProcesos.stream().mapToDouble(Map.Entry::getValue).sum();
+
+        int x = 150, y = 100, ancho = 300, alto = 300;
+        double anguloInicio = 0;
+        int i = 0;
+
+        for (Map.Entry<String, Double> entry : topProcesos) {
+            double porcentaje = entry.getValue() / total;
+            double angulo = porcentaje * 360;
+
+            g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+            g2.fillArc(x, y, ancho, alto, (int) anguloInicio, (int) angulo);
+            anguloInicio += angulo;
+            i++;
+        }
+
+        int leyendaY = 420;
+        g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        i = 0;
+        for (Map.Entry<String, Double> entry : topProcesos) {
+            g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+            g2.fillRect(30, leyendaY, 15, 15);
+            g2.setColor(Color.BLACK);
+            g2.drawString(entry.getKey() + String.format(" (%.2f MB/s)", entry.getValue()), 50, leyendaY + 12);
+            leyendaY += 20;
+            i++;
+        }
+    }
+};
+
+ventana.add(panelGrafica);
+ventana.setVisible(true);
+    }//GEN-LAST:event_btnGraficaDiscoActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -594,10 +945,76 @@ private String ejecutarComando(String comando, String encabezado) {
             }
         });
     }
+    
+    //David Rojas
+    //Ordenar de mayor a menor en orden Alfabetico
+    private void btnOrdenarActionPerformed(java.awt.event.ActionEvent evt) {
+    DefaultTableModel model = (DefaultTableModel) jtabla_datos.getModel();
+
+    java.util.List<Object[]> datos = new java.util.ArrayList<>();
+    for (int i = 0; i < model.getRowCount(); i++) {
+        Object[] fila = new Object[model.getColumnCount()];
+        for (int j = 0; j < model.getColumnCount(); j++) {
+            fila[j] = model.getValueAt(i, j);
+        }
+        datos.add(fila);
+    }
+
+    datos.sort((a, b) -> {
+        // Columna 4 = Uso de memoria (ej: "123 MB")
+        int memA = extraerMB(a[4].toString());
+        int memB = extraerMB(b[4].toString());
+
+        if (memB != memA) {
+            return Integer.compare(memB, memA); // Mayor a menor
+        }
+        // Si la memoria es igual, orden alfabético por Nombre (columna 0)
+        return a[0].toString().compareToIgnoreCase(b[0].toString());
+    });
+
+    // Limpiar y volver a insertar
+    model.setRowCount(0);
+    for (Object[] fila : datos) {
+        model.addRow(fila);
+    }
+}
+
+    // Método auxiliar para extraer solo el número en MB
+    private int extraerMB(String texto) {
+    try {
+        return Integer.parseInt(texto.replaceAll("[^0-9]", ""));
+    } catch (NumberFormatException e) {
+        return 0;
+    }
+}
+
+    //David Rojas
+    //Opcion de busqueda
+    private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {
+    String texto = JOptionPane.showInputDialog(this, "Ingrese texto a buscar en Nombre de proceso:");
+    if (texto == null || texto.trim().isEmpty()) return;
+
+    texto = texto.toLowerCase();
+    jtabla_datos.clearSelection();
+
+    for (int i = 0; i < jtabla_datos.getRowCount(); i++) {
+        String nombre = jtabla_datos.getValueAt(i, 0).toString().toLowerCase();
+        if (nombre.contains(texto)) {
+            // Selecciona la fila encontrada
+            jtabla_datos.addRowSelectionInterval(i, i);
+        }
+    }
+}
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField No_procesos;
+    private javax.swing.JButton btnBuscar;
     private javax.swing.JButton btnEspesifiaciones;
+    private javax.swing.JButton btnGraficaDisco;
+    private javax.swing.JButton btnGraficaMem;
+    private javax.swing.JButton btnOrdenar;
+    private javax.swing.JButton btnOrdenarMenor;
     private javax.swing.JButton btnSuspenderProceso;
     private javax.swing.JButton jIniciar_procesos;
     private javax.swing.JLabel jLabel2;
