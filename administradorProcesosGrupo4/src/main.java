@@ -227,9 +227,22 @@ public class main extends javax.swing.JFrame {
                         ICont++;
                     }
 
-                    // CPU y Disco simulados 
-                    Fila[5] = (int) (Math.random() * 50) + " %"; // CPU %
-                    Fila[6] = Math.round(Math.random() * 10 * 100.0) / 100.0 + " MB/s"; // Disco
+                    // CPU y Disco simulados
+                    String nombreProceso = sep[0].toLowerCase(); // Nombre del proceso
+                    double base;
+
+                    if (nombreProceso.contains("java") || nombreProceso.contains("netbeans") ||
+                        nombreProceso.contains("chrome") || nombreProceso.contains("firefox") ||
+                        nombreProceso.contains("code") || nombreProceso.contains("antivirus") ||
+                        nombreProceso.contains("teams") || nombreProceso.contains("discord")) {
+                        base = 3.5 + Math.random() * 2.5; // Entre 3.5 y 6.0 → perfil alto
+                    } else if (nombreProceso.contains("Syst") || nombreProceso.contains("explorer") ||
+                            nombreProceso.contains("conhost") || nombreProceso.contains("services") ||
+                            nombreProceso.contains("taskhost")) {
+                        base = 1.5 + Math.random() * 2.0; // Entre 1.5 y 3.5 → perfil medio
+                    } else {
+                        base = Math.pow(Math.random(), 2) * 1.5; // Perfil bajo sesgado hacia 0
+                    }
                     
                     int pid = -1;
                     if (sep.length > 1) {
@@ -239,6 +252,14 @@ public class main extends javax.swing.JFrame {
                             pid = -1; // Valor inválido
                         }
                     }
+
+                    perfilCPU.put(pid, base);
+                    Fila[5] = String.format("%.1f %%", base);
+
+                    double discoSesgado = Math.pow(Math.random(), 2.5) * 1.0; // Sesgado hacia valores bajos
+                    Fila[6] = String.format("%.2f MB/s", discoSesgado);
+
+
                     
                     if (pid != -1 && procesosConRed.contains(pid)) {
                         double redSimulada = 0.01 + Math.random() * (5.00 - 0.01); // Entre 0.01 y 5.00 Mbps
@@ -260,6 +281,8 @@ public class main extends javax.swing.JFrame {
             No_procesos.setText(String.valueOf(i));
             iniciarActualizacionRed();
             iniciarActualizacionMemoria();
+            iniciarActualizacionCPU();
+            iniciarActualizacionDisco();
         } catch (Exception err) {
             err.printStackTrace();
         }
@@ -267,59 +290,100 @@ public class main extends javax.swing.JFrame {
     }
     //Anderson Rodriguez
     private void iniciarActualizacionMemoria() {
-    Timer timer = new Timer(1000, new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            try {
-                Process p = Runtime.getRuntime().exec(System.getenv("windir") + "\\system32\\" + "tasklist.exe");
-                BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                String line;
-                Map<Integer, String> memoriaPorPID = new HashMap<>();
+        Timer timer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    Process p = Runtime.getRuntime().exec(System.getenv("windir") + "\\system32\\" + "tasklist.exe");
+                    BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                    String line;
+                    Map<Integer, String> memoriaPorPID = new HashMap<>();
 
-                int i = 0;
-                while ((line = input.readLine()) != null) {
-                    if (i >= 4) {
-                        String[] sep = line.trim().split("\\s+");
-                        if (sep.length >= 6) {
-                            try {
-                                int pid = Integer.parseInt(sep[1]);
-                                String mem = sep[4] + " " + sep[5]; // Ejemplo: "12,345 KB"
-                                mem = mem.replace("KB", "").replace(",", "").trim();
-                                long kb = Long.parseLong(mem);
-                                long mb = kb / 1024;
-                                memoriaPorPID.put(pid, mb + " MB");
-                            } catch (NumberFormatException ex) {
-                                // Ignorar si no se puede convertir
+                    int i = 0;
+                    while ((line = input.readLine()) != null) {
+                        if (i >= 4) {
+                            String[] sep = line.trim().split("\\s+");
+                            if (sep.length >= 6) {
+                                try {
+                                    int pid = Integer.parseInt(sep[1]);
+                                    String mem = sep[4] + " " + sep[5];
+                                    mem = mem.replace("KB", "").replace(",", "").trim();
+                                    long kb = Long.parseLong(mem);
+                                    long mb = kb / 1024;
+                                    memoriaPorPID.put(pid, mb + " MB");
+                                } catch (NumberFormatException ex) {
+                                    // Ignorar si no se puede convertir
+                                }
                             }
                         }
+                        i++;
                     }
-                    i++;
-                }
-                input.close();
+                    input.close();
 
-                // Actualizar la tabla
+                    // Actualizar la tabla
+                    for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
+                        Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
+                        int pid = -1;
+                        try {
+                            pid = Integer.parseInt(pidObj.toString());
+                        } catch (NumberFormatException ex) {
+                            pid = -1;
+                        }
+
+                        if (pid != -1 && memoriaPorPID.containsKey(pid)) {
+                            jtabla_datos.setValueAt(memoriaPorPID.get(pid), fila, 4); // Columna 4 = Memoria
+                        }
+                    }
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        timer.start();
+    }
+    
+    private Map<Integer, Double> perfilCPU = new HashMap<>();
+    //Anderson Rodriguez
+    private void iniciarActualizacionCPU() {
+        Timer timer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
                 for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
-                    Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
+                    Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID en columna 1
                     int pid = -1;
                     try {
                         pid = Integer.parseInt(pidObj.toString());
                     } catch (NumberFormatException ex) {
-                        pid = -1;
+                        continue;
                     }
 
-                    if (pid != -1 && memoriaPorPID.containsKey(pid)) {
-                        jtabla_datos.setValueAt(memoriaPorPID.get(pid), fila, 4); // Columna 4 = Memoria
-                    }
+                    double base = perfilCPU.getOrDefault(pid, 0.5); // Valor por defecto si no existe
+                    double variacion = (Math.random() - 0.5) * 1.0; // Fluctúa entre -0.5 y +0.5
+                    double nuevoValor = Math.max(0.0, Math.min(6.0, base + variacion)); // Limita entre 0 y 6
+                    jtabla_datos.setValueAt(String.format("%.1f %%", nuevoValor), fila, 5);
                 }
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
             }
-        }
-    });
-    timer.start();
-}
+        });
+        timer.start();
+    }
+    //Anderson Rodriguez
+    private void iniciarActualizacionDisco() {
+        Timer timer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
+                    // Simulación sesgada hacia valores bajos entre 0.0 y 1.0 MB/s
+                    double discoSesgado = Math.pow(Math.random(), 2.5) * 1.0;
+                    String discoTexto = String.format("%.2f MB/s", discoSesgado);
+                    jtabla_datos.setValueAt(discoTexto, fila, 6); // Columna 6 = Disco
+                }
+            }
+        });
+        timer.start();
+    }
 
+    
     
     //Anderson Rodriguez
     private DefaultTableCellRenderer getColorRenderer() {
@@ -338,10 +402,8 @@ public class main extends javax.swing.JFrame {
                     return c;
                 }
 
-                if (column == 4) { // Solo aplicar estilo si es la columna de uso de memoria
+                if (column == 4){ // Solo aplicar estilo si es la columna de uso de memoria
                     String usoMemoriaStr = value.toString().replace("MB", "").replace(",", "").trim();
-                
-                     //System.out.println("Memoria: " + usoMemoriaStr);
 
                     try {
                         int usoMemoria = Integer.parseInt(usoMemoriaStr);
@@ -356,11 +418,60 @@ public class main extends javax.swing.JFrame {
                         c.setBackground(Color.WHITE);
                         c.setForeground(Color.BLACK);
                     }
-                } else {
+                }
+                    
+                // CPU (columna 5)
+                else if (column == 5) {
+                    String usoCPUStr = value.toString().replace("%", "").replace(",", "").trim();
+                    try {
+                        double usoCPU = Double.parseDouble(usoCPUStr);
+                        if (usoCPU >= 1.0) {
+                            c.setBackground(new Color(70, 130, 180)); // azul fuerte 
+                        } else {
+                            c.setBackground(new Color(173, 216, 230)); // azul claro 
+                        }
+                    } catch (NumberFormatException e) {
+                        c.setBackground(Color.WHITE);
+                    }
+                    c.setForeground(Color.BLACK);
+                }
+                // Disco (columna 6)
+                else if (column == 6) {
+                    String usoDiscoStr = value.toString().replace("MB/s", "").replace(",", "").trim();
+                    try {
+                        double usoDisco = Double.parseDouble(usoDiscoStr);
+                        if (usoDisco >= 0.8) {
+                            c.setBackground(new Color(70, 130, 180)); // azul fuerte
+                        } else {
+                            c.setBackground(new Color(173, 216, 230)); // azul claro
+                        }
+                    } catch (NumberFormatException e) {
+                        c.setBackground(Color.WHITE);
+                    }
+                    c.setForeground(Color.BLACK);
+                }
+                
+                 // Red (columna 7)
+                else if (column == 7) {
+                    String usoRedStr = value.toString().replace("Mbps", "").replace(",", "").trim();
+                    try {
+                        double usoRed = Double.parseDouble(usoRedStr);
+                        if (usoRed >= 3.0) {
+                            c.setBackground(new Color(70, 130, 180)); // azul fuerte
+                        } else {
+                            c.setBackground(new Color(173, 216, 230)); // azul claro
+                        }
+                    } catch (NumberFormatException e) {
+                        c.setBackground(Color.WHITE);
+                    }
+                    c.setForeground(Color.BLACK);
+                }
+                else {
                     // Para otras columnas, mantener estilo normal
                     c.setBackground(Color.WHITE);
                     c.setForeground(Color.BLACK);
                 }
+                
 
                 return c;
             }
@@ -368,59 +479,59 @@ public class main extends javax.swing.JFrame {
     }
     //Anderson Rodriguez
     private void iniciarActualizacionRed() {
-    Timer timer = new Timer(1000, new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            Set<Integer> procesosConRed = obtenerPIDsDesdeNetstat(); // Actualizar PIDs con conexión activa
+        Timer timer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Set<Integer> procesosConRed = obtenerPIDsDesdeNetstat(); // Actualizar PIDs con conexión activa
 
-            for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
-                Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
-                int pid = -1;
-                try {
-                    pid = Integer.parseInt(pidObj.toString());
-                } catch (NumberFormatException ex) {
-                    pid = -1;
-                }
-
-                if (pid != -1 && procesosConRed.contains(pid)) {
-                    double redSimulada = 0.01 + Math.random() * (5.00 - 0.01);
-                    jtabla_datos.setValueAt(String.format("%.2f Mbps", redSimulada), fila, 7); // Columna 7 = Red
-                } else {
-                    jtabla_datos.setValueAt("0.00 Mbps", fila, 7);
-                }
-            }
-        }
-    });
-    timer.start();
-}
-    //Anderson Rodriguez
-    private Set<Integer> obtenerPIDsDesdeNetstat() {
-    Set<Integer> pids = new HashSet<>();
-    try {
-        Process proceso = Runtime.getRuntime().exec("netstat -ano");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
-        String linea;
-        while ((linea = reader.readLine()) != null) {
-            linea = linea.trim();
-            if (linea.startsWith("TCP") || linea.startsWith("UDP")) {
-                String[] partes = linea.split("\\s+");
-                if (partes.length >= 5) {
+                for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
+                    Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
+                    int pid = -1;
                     try {
-                        int pid = Integer.parseInt(partes[partes.length - 1]);
-                        pids.add(pid);
-                    } catch (NumberFormatException e) {
-                        // Ignorar líneas con PID no válido
+                        pid = Integer.parseInt(pidObj.toString());
+                    } catch (NumberFormatException ex) {
+                        pid = -1;
+                    }
+
+                    if (pid != -1 && procesosConRed.contains(pid)) {
+                        double redSimulada = 0.01 + Math.random() * (5.00 - 0.01);
+                        jtabla_datos.setValueAt(String.format("%.2f Mbps", redSimulada), fila, 7); // Columna 7 = Red
+                    } else {
+                        jtabla_datos.setValueAt("0.00 Mbps", fila, 7);
                     }
                 }
             }
-        }
-    } catch (Exception e) {
-        e.printStackTrace();
+        });
+        timer.start();
     }
-    return pids;
-}
+    //Anderson Rodriguez
+    private Set<Integer> obtenerPIDsDesdeNetstat() {
+        Set<Integer> pids = new HashSet<>();
+        try {
+            Process proceso = Runtime.getRuntime().exec("netstat -ano");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+            String linea;
+            while ((linea = reader.readLine()) != null) {
+                linea = linea.trim();
+                if (linea.startsWith("TCP") || linea.startsWith("UDP")) {
+                    String[] partes = linea.split("\\s+");
+                    if (partes.length >= 5) {
+                        try {
+                            int pid = Integer.parseInt(partes[partes.length - 1]);
+                            pids.add(pid);
+                        } catch (NumberFormatException e) {
+                            // Ignorar líneas con PID no válido
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return pids;
+    }
     
-    //Cristofer
+    //Ruddyard Castro 9959-23-1409
     // procedimiento de limpieza de la tabla la restablece de a los parametros inisciales
   void LimpiarTabla() {
     jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
