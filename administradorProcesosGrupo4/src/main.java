@@ -230,7 +230,7 @@ public class main extends javax.swing.JFrame {
                     // CPU y Disco simulados
                     String nombreProceso = sep[0].toLowerCase(); // Nombre del proceso
                     double base;
-
+                    //colocando un perfil segun el nombre del proceso
                     if (nombreProceso.contains("java") || nombreProceso.contains("netbeans") ||
                         nombreProceso.contains("chrome") || nombreProceso.contains("firefox") ||
                         nombreProceso.contains("code") || nombreProceso.contains("antivirus") ||
@@ -289,11 +289,15 @@ public class main extends javax.swing.JFrame {
 
     }
     //Anderson Rodriguez
+    //Metodo que sirve para actualizar cada segundo el uso de memoria de los procesos listados en la tabla
+    //Obtiene la información directamente del comando `tasklist.exe` de Windows
     private void iniciarActualizacionMemoria() {
+        // Crea un temporizador que ejecuta la tarea cada 1000 ms (1 segundo)
         Timer timer = new Timer(1000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
+                    // Ejecuta el comando tasklist para obtener la lista de procesos
                     Process p = Runtime.getRuntime().exec(System.getenv("windir") + "\\system32\\" + "tasklist.exe");
                     BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
                     String line;
@@ -301,10 +305,12 @@ public class main extends javax.swing.JFrame {
 
                     int i = 0;
                     while ((line = input.readLine()) != null) {
+                        // Ignora las primeras 4 líneas del encabezado
                         if (i >= 4) {
                             String[] sep = line.trim().split("\\s+");
                             if (sep.length >= 6) {
                                 try {
+                                    // Extrae el PID y la memoria usada
                                     int pid = Integer.parseInt(sep[1]);
                                     String mem = sep[4] + " " + sep[5];
                                     mem = mem.replace("KB", "").replace(",", "").trim();
@@ -320,7 +326,7 @@ public class main extends javax.swing.JFrame {
                     }
                     input.close();
 
-                    // Actualizar la tabla
+                    // Actualiza la columna de memoria en la tabla para cada proceso
                     for (int fila = 0; fila < jtabla_datos.getRowCount(); fila++) {
                         Object pidObj = jtabla_datos.getValueAt(fila, 1); // PID está en la columna 1
                         int pid = -1;
@@ -345,6 +351,8 @@ public class main extends javax.swing.JFrame {
     
     private Map<Integer, Double> perfilCPU = new HashMap<>();
     //Anderson Rodriguez
+    //Método que simula cada segundo el uso de CPU de los procesos en la tabla
+    //Utiliza una variación aleatoria basada en un perfil base por PID
     private void iniciarActualizacionCPU() {
         Timer timer = new Timer(1000, new ActionListener() {
             @Override
@@ -357,10 +365,10 @@ public class main extends javax.swing.JFrame {
                     } catch (NumberFormatException ex) {
                         continue;
                     }
-
                     double base = perfilCPU.getOrDefault(pid, 0.5); // Valor por defecto si no existe
                     double variacion = (Math.random() - 0.5) * 1.0; // Fluctúa entre -0.5 y +0.5
                     double nuevoValor = Math.max(0.0, Math.min(6.0, base + variacion)); // Limita entre 0 y 6
+                    // Actualiza la columna de CPU en la tabla
                     jtabla_datos.setValueAt(String.format("%.1f %%", nuevoValor), fila, 5);
                 }
             }
@@ -368,6 +376,8 @@ public class main extends javax.swing.JFrame {
         timer.start();
     }
     //Anderson Rodriguez
+    //Metodo que simula cada segundo el uso de disco por proceso.
+    //Genera valores sesgados hacia cifras bajas (entre 0.0 y 1.0 MB/s).
     private void iniciarActualizacionDisco() {
         Timer timer = new Timer(1000, new ActionListener() {
             @Override
@@ -376,6 +386,7 @@ public class main extends javax.swing.JFrame {
                     // Simulación sesgada hacia valores bajos entre 0.0 y 1.0 MB/s
                     double discoSesgado = Math.pow(Math.random(), 2.5) * 1.0;
                     String discoTexto = String.format("%.2f MB/s", discoSesgado);
+                    // Actualiza la columna de Disco en la tabla
                     jtabla_datos.setValueAt(discoTexto, fila, 6); // Columna 6 = Disco
                 }
             }
@@ -386,6 +397,9 @@ public class main extends javax.swing.JFrame {
     
     
     //Anderson Rodriguez
+    /* Metodo que devuelve un renderizador personalizado para celdas de la tabla.Este renderizador 
+    aplica colores de fondo según el valor de uso de recursos (Memoria, CPU, Disco, Red).
+    Los colores varían en intensidad para destacar valores altos. */
     private DefaultTableCellRenderer getColorRenderer() {
         return new DefaultTableCellRenderer() {
             @Override
@@ -401,7 +415,7 @@ public class main extends javax.swing.JFrame {
                     c.setForeground(table.getSelectionForeground());
                     return c;
                 }
-
+                //Columna 4: Uso de Memoria
                 if (column == 4){ // Solo aplicar estilo si es la columna de uso de memoria
                     String usoMemoriaStr = value.toString().replace("MB", "").replace(",", "").trim();
 
@@ -478,6 +492,8 @@ public class main extends javax.swing.JFrame {
         };
     }
     //Anderson Rodriguez
+    //Metodo que actualiza cada segundo el uso de red de los procesos en la tabla.
+    //Simula tráfico de red solo para procesos que tienen conexiones activas (según netstat).
     private void iniciarActualizacionRed() {
         Timer timer = new Timer(1000, new ActionListener() {
             @Override
@@ -492,7 +508,7 @@ public class main extends javax.swing.JFrame {
                     } catch (NumberFormatException ex) {
                         pid = -1;
                     }
-
+                    // Si el proceso tiene conexión activa, simula tráfico entre 0.01 y 5.00 Mbps
                     if (pid != -1 && procesosConRed.contains(pid)) {
                         double redSimulada = 0.01 + Math.random() * (5.00 - 0.01);
                         jtabla_datos.setValueAt(String.format("%.2f Mbps", redSimulada), fila, 7); // Columna 7 = Red
@@ -505,6 +521,9 @@ public class main extends javax.swing.JFrame {
         timer.start();
     }
     //Anderson Rodriguez
+    /*método que jecuta el comando `netstat -ano` para obtener los PIDs de procesos con conexiones activas.
+    Filtra líneas que comienzan con TCP o UDP y extrae el PID del final de cada línea y retorna el
+    conjunto de PIDs con actividad de red.*/
     private Set<Integer> obtenerPIDsDesdeNetstat() {
         Set<Integer> pids = new HashSet<>();
         try {
