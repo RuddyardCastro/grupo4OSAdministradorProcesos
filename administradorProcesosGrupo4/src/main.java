@@ -552,43 +552,55 @@ public class main extends javax.swing.JFrame {
     
     //Ruddyard Castro 9959-23-1409
     // procedimiento de limpieza de la tabla la restablece de a los parametros inisciales
-  void LimpiarTabla() {
+ // Método para limpiar la tabla y restablecerla a su estado inicial
+void LimpiarTabla() {
+    // Establecer un nuevo modelo de tabla con las columnas definidas
     jtabla_datos.setModel(new javax.swing.table.DefaultTableModel(
+            // Datos iniciales vacíos
             new Object[][]{},
+            // Nombres de las columnas
             new String[]{
                 "Nombre", "PID", "Tipo de sesión", "Número de sesión", 
                 "Uso de memoria", "CPU (%)", "Disco (MB/s)", "Red (%)"
             }
     ) {
+        // Array que define qué columnas son editables (todas false en este caso)
         boolean[] canEdit = new boolean[]{
             false, false, false, false, false, false, false, false
         };
 
+        // Método que determina si una celda es editable
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return canEdit[columnIndex];
         }
     });
 }
 
+// Método para matar un proceso seleccionado en la tabla
+// Ruddyard Castro 9959-23-1409
+public void Matar_proceso() {
+    // Obtener el modelo de la tabla para acceder a los datos
+    modelo = (DefaultTableModel) jtabla_datos.getModel();
+    // Obtener el valor de la primera columna (Nombre del proceso) de la fila seleccionada
+    String StrCelda = String.valueOf(modelo.getValueAt(jtabla_datos.getSelectedRow(), 0));
     
-
-    
-    //Ruddyard Castro 9959-23-1409
-      public void Matar_proceso() {
-        modelo = (DefaultTableModel) jtabla_datos.getModel();
-        String StrCelda = String.valueOf(modelo.getValueAt(jtabla_datos.getSelectedRow(), 0));
-        if (StrCelda == "") {
-            JOptionPane.showMessageDialog(null, "ERROR, No se ha selecionado ningun proceso", "Error", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            try {
-                Process hijo;
-                hijo = Runtime.getRuntime().exec("taskkill /F /IM " + StrCelda);
-                hijo.waitFor();
-            } catch (IOException | InterruptedException ex) {
-                Logger.getLogger(main.class.getName()).log(Level.SEVERE, null, ex);
-            }
+    // Verificar si no se ha seleccionado ningún proceso o el campo está vacío
+    if (StrCelda == "") {
+        // Mostrar mensaje de error al usuario
+        JOptionPane.showMessageDialog(null, "ERROR, No se ha seleccionado ningún proceso", "Error", JOptionPane.INFORMATION_MESSAGE);
+    } else {
+        try {
+            // Crear un proceso para ejecutar el comando de terminación de tareas de Windows
+            Process hijo;
+            // Ejecutar el comando taskkill para forzar la terminación del proceso
+            hijo = Runtime.getRuntime().exec("taskkill /F /IM " + StrCelda);
+            // Esperar a que el comando termine de ejecutarse
+            hijo.waitFor();
+        } catch (IOException | InterruptedException ex) {
+            // Registrar cualquier error que ocurra durante la ejecución
+            Logger.getLogger(main.class.getName()).log(Level.SEVERE, null, ex);
         }
-                    
+    }
 }
 private Map<String, String> obtenerInformacionSistema() {
     Map<String, String> info = new HashMap<>();
@@ -908,133 +920,188 @@ private String ejecutarComando(String comando, String encabezado) {
         // TODO add your handling code here:
         // Ruddyard Castro 9959-59-23-1409
         
-         JFrame ventana = new JFrame("Distribución de Memoria");
-    ventana.setSize(700, 600);
-    ventana.setLocationRelativeTo(null);
-    ventana.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-    JPanel panelGrafica = new JPanel() {
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            // Obtener procesos reales desde Windows
-            Map<String, Double> procesos =obtenerProcesosDesdeWindows();
-
-            // Si no hay datos reales, generar simulados
-            if (procesos.isEmpty()) {
-                procesos = new LinkedHashMap<>();
-                procesos.put("operaApp.exe", 320.0);
-                procesos.put("FChrome.exe", 210.0);
-                procesos.put("TestJava.exe", 180.0);
-                procesos.put("DummyExplorer.exe", 95.0);
-                procesos.put("FakeService.exe", 60.0);
-            }
-
-            List<Map.Entry<String, Double>> topProcesos = procesos.entrySet().stream()
-                    .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
-                    .limit(10)
-                    .toList();
-
-            double total = topProcesos.stream().mapToDouble(Map.Entry::getValue).sum();
-
-            int x = 150, y = 100, ancho = 300, alto = 300;
-            double anguloInicio = 0;
-            int i = 0;
-
-            for (Map.Entry<String, Double> entry : topProcesos) {
-                double porcentaje = entry.getValue() / total;
-                double angulo = porcentaje * 360;
-
-                g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
-                g2.fillArc(x, y, ancho, alto, (int) anguloInicio, (int) angulo);
-                anguloInicio += angulo;
-                i++;
-            }
-
-            // Leyenda
-            int leyendaY = 420;
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
-            i = 0;
-            for (Map.Entry<String, Double> entry : topProcesos) {
-                g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
-                g2.fillRect(30, leyendaY, 15, 15);
-                g2.setColor(Color.BLACK);
-                g2.drawString(entry.getKey() + String.format(" (%.1f MB)", entry.getValue()), 50, leyendaY + 12);
-                leyendaY += 20;
-                i++;
-            }
-        }
-        
-        };
-
-    ventana.add(panelGrafica);
-    ventana.setVisible(true);
-
-        
-    }//GEN-LAST:event_btnGraficaMemActionPerformed
-
-    private void btnGraficaDiscoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGraficaDiscoActionPerformed
-        // TODO add your handling code here:
-        
-   JFrame ventana = new JFrame("Distribución de Uso de Disco");
+        // Crear la ventana principal para la distribución de memoria
+JFrame ventana = new JFrame("Distribución de Memoria");
+// Configurar el tamaño de la ventana (ancho x alto)
 ventana.setSize(700, 600);
+// Centrar la ventana en la pantalla
 ventana.setLocationRelativeTo(null);
+// Definir que al cerrar solo se cierre esta ventana, no toda la aplicación
 ventana.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
+// Crear un panel personalizado para dibujar la gráfica circular de memoria
 JPanel panelGrafica = new JPanel() {
     @Override
     protected void paintComponent(Graphics g) {
+        // Llamar al método padre para el renderizado básico
         super.paintComponent(g);
+        // Convertir a Graphics2D para funcionalidades avanzadas de dibujo
         Graphics2D g2 = (Graphics2D) g;
+        // Activar antialiasing para bordes suavizados
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        Map<String, Double> procesos = obtenerProcesosDiscoDesdeWindows();
+        // Obtener procesos reales de memoria desde Windows
+        Map<String, Double> procesos = obtenerProcesosDesdeWindows();
 
+        // Si no hay datos reales, usar datos simulados para evitar gráfica vacía
         if (procesos.isEmpty()) {
             procesos = new LinkedHashMap<>();
-            procesos.put("chrome.exe", 15.5);
-            procesos.put("sqlservr.exe", 8.2);
-            procesos.put("javaw.exe", 5.7);
-            procesos.put("explorer.exe", 3.1);
-            procesos.put("svchost.exe", 2.8);
+            procesos.put("operaApp.exe", 320.0);
+            procesos.put("FChrome.exe", 210.0);
+            procesos.put("TestJava.exe", 180.0);
+            procesos.put("DummyExplorer.exe", 95.0);
+            procesos.put("FakeService.exe", 60.0);
         }
 
+        // Obtener los 10 procesos que más memoria consumen
         List<Map.Entry<String, Double>> topProcesos = procesos.entrySet().stream()
+                // Ordenar de mayor a menor consumo de memoria
                 .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                // Limitar a los 10 primeros
                 .limit(10)
+                // Convertir a lista
                 .toList();
 
+        // Calcular el total de memoria consumida por los procesos top
         double total = topProcesos.stream().mapToDouble(Map.Entry::getValue).sum();
 
+        // Definir posición y dimensiones de la gráfica circular
         int x = 150, y = 100, ancho = 300, alto = 300;
+        // Ángulo inicial para comenzar a dibujar
         double anguloInicio = 0;
+        // Contador para asignar colores diferentes
         int i = 0;
 
+        // Dibujar cada segmento de la gráfica circular
         for (Map.Entry<String, Double> entry : topProcesos) {
+            // Calcular el porcentaje de memoria que usa este proceso
             double porcentaje = entry.getValue() / total;
+            // Convertir porcentaje a ángulo (360 grados = 100%)
             double angulo = porcentaje * 360;
 
+            // Asignar color diferente a cada segmento usando modelo HSB
             g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+            // Dibujar el segmento circular (arco relleno)
             g2.fillArc(x, y, ancho, alto, (int) anguloInicio, (int) angulo);
+            // Actualizar ángulo de inicio para el próximo segmento
             anguloInicio += angulo;
+            // Incrementar contador de colores
             i++;
         }
 
-        int leyendaY = 420;
-        g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        i = 0;
+        // Dibujar la leyenda de la gráfica
+        int leyendaY = 420;  // Posición vertical inicial de la leyenda
+        g2.setFont(new Font("SansSerif", Font.PLAIN, 12));  // Configurar fuente del texto
+        i = 0;  // Reiniciar contador para colores
         for (Map.Entry<String, Double> entry : topProcesos) {
+            // Dibujar el cuadro de color de la leyenda
             g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
             g2.fillRect(30, leyendaY, 15, 15);
+            // Dibujar el texto de la leyenda (nombre del proceso y consumo en MB)
             g2.setColor(Color.BLACK);
-            g2.drawString(entry.getKey() + String.format(" (%.2f MB/s)", entry.getValue()), 50, leyendaY + 12);
+            g2.drawString(entry.getKey() + String.format(" (%.1f MB)", entry.getValue()), 50, leyendaY + 12);
+            // Mover a la siguiente línea de la leyenda
             leyendaY += 20;
             i++;
         }
     }
+};
+
+// Agregar el panel de la gráfica a la ventana
+ventana.add(panelGrafica);
+// Hacer visible la ventana
+ventana.setVisible(true);
+        
+    }//GEN-LAST:event_btnGraficaMemActionPerformed
+//Ruddyard cAstro 
+    private void btnGraficaDiscoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGraficaDiscoActionPerformed
+        // TODO add your handling code here:
+    
+        // Crear la ventana principal de la aplicación
+        JFrame ventana = new JFrame("Distribución de Uso de Disco");
+// Configurar el tamaño de la ventana (ancho, alto)
+        ventana.setSize(700, 600);
+// Centrar la ventana en la pantalla
+        ventana.setLocationRelativeTo(null);
+// Definir el comportamiento al cerrar la ventana (solo cerrar esta ventana)
+        ventana.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+// Crear un panel personalizado para dibujar la gráfica circular
+        JPanel panelGrafica = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                // Llamar al método de la clase padre para asegurar el renderizado correcto
+                super.paintComponent(g);
+                // Convertir Graphics a Graphics2D para usar funcionalidades avanzadas
+                Graphics2D g2 = (Graphics2D) g;
+                // Activar antialiasing para suavizar los bordes de los gráficos
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Obtener los procesos de disco desde Windows (método externo)
+                Map<String, Double> procesos = obtenerProcesosDiscoDesdeWindows();
+
+                // Si no se obtuvieron procesos, usar datos de ejemplo para demostración
+                if (procesos.isEmpty()) {
+                    procesos = new LinkedHashMap<>();
+                    procesos.put("chrome.exe", 15.5);
+                    procesos.put("sqlservr.exe", 8.2);
+                    procesos.put("javaw.exe", 5.7);
+                    procesos.put("explorer.exe", 3.1);
+                    procesos.put("svchost.exe", 2.8);
+                }
+
+                // Obtener los 10 procesos que más uso de disco tienen
+                List<Map.Entry<String, Double>> topProcesos = procesos.entrySet().stream()
+                        // Ordenar de mayor a menor por valor de uso de disco
+                        .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                        // Limitar a los 10 primeros
+                        .limit(10)
+                        // Convertir a lista
+                        .toList();
+
+                // Calcular el total de uso de disco para calcular porcentajes
+                double total = topProcesos.stream().mapToDouble(Map.Entry::getValue).sum();
+
+                // Definir las dimensiones y posición de la gráfica circular
+                int x = 150, y = 100, ancho = 300, alto = 300;
+                // Ángulo inicial para comenzar a dibujar la gráfica
+                double anguloInicio = 0;
+                // Contador para asignar colores diferentes a cada segmento
+                int i = 0;
+
+                // Dibujar cada segmento de la gráfica circular
+                for (Map.Entry<String, Double> entry : topProcesos) {
+                    // Calcular el porcentaje que representa este proceso del total
+                    double porcentaje = entry.getValue() / total;
+                    // Convertir el porcentaje a ángulo (360 grados = 100%)
+                    double angulo = porcentaje * 360;
+
+                    // Asignar un color diferente a cada segmento usando HSB
+                    g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+                    // Dibujar el segmento circular (arco relleno)
+                    g2.fillArc(x, y, ancho, alto, (int) anguloInicio, (int) angulo);
+                    // Actualizar el ángulo de inicio para el próximo segmento
+                    anguloInicio += angulo;
+                    // Incrementar el contador de colores
+                    i++;
+                }
+
+                // Dibujar la leyenda de la gráfica
+                int leyendaY = 420;  // Posición vertical inicial de la leyenda
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 12));  // Fuente para el texto
+                i = 0;  // Reiniciar contador para colores
+                for (Map.Entry<String, Double> entry : topProcesos) {
+                    // Dibujar el cuadro de color de la leyenda
+                    g2.setColor(Color.getHSBColor((float) i / topProcesos.size(), 0.7f, 0.9f));
+                    g2.fillRect(30, leyendaY, 15, 15);
+                    // Dibujar el texto de la leyenda (nombre del proceso y uso en MB/s)
+                    g2.setColor(Color.BLACK);
+                    g2.drawString(entry.getKey() + String.format(" (%.2f MB/s)", entry.getValue()), 50, leyendaY + 12);
+                    // Mover a la siguiente línea de la leyenda
+                    leyendaY += 20;
+                    i++;
+                }
+            }
 };
 
 ventana.add(panelGrafica);
