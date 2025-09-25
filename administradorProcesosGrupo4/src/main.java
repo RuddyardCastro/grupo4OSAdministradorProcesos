@@ -34,6 +34,10 @@ import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import java.lang.management.ManagementFactory;
+import com.sun.management.OperatingSystemMXBean;
+import java.io.File;
+
 
 
 
@@ -171,10 +175,14 @@ public class main extends javax.swing.JFrame {
     
     
     
-    //Gabriela
+    //Gabriela Pinto
+    // Método para alinear las columnas de la tabla
  private void Alineacion_Columnas() {
+      // Creamos un objeto que permite cambiar la alineación del contenido de las celdas
         DefaultTableCellRenderer Alinear = new DefaultTableCellRenderer();
+        // Configuramos que el texto se alinee a la derecha
         Alinear.setHorizontalAlignment(SwingConstants.RIGHT);
+        // Aplicamos la alineación a las columnas de la tabla:
         jtabla_datos.getColumnModel().getColumn(1).setCellRenderer(Alinear);
         jtabla_datos.getColumnModel().getColumn(2).setCellRenderer(Alinear);
         jtabla_datos.getColumnModel().getColumn(3).setCellRenderer(Alinear);
@@ -226,10 +234,22 @@ public class main extends javax.swing.JFrame {
                         }
                         ICont++;
                     }
+                    
+                    //Gabriela Pinto
+                    // CPU real
+                    // Obtenemos la información del sistema operativo usando MXBean
+                    OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+                    double cpuLoad = osBean.getSystemCpuLoad() * 100; // Consultamos el uso actual de la CPU (valor entre 0 y 1) y lo convertimos a porcentaje
+                    Fila[5] = String.format("%.2f %%", cpuLoad); //Guarda el valor en columna 5
 
-                    // CPU y Disco simulados 
-                    Fila[5] = (int) (Math.random() * 50) + " %"; // CPU %
-                    Fila[6] = Math.round(Math.random() * 10 * 100.0) / 100.0 + " MB/s"; // Disco
+                    
+                    //Gabriela Pinto
+                    // Disco real (ejemplo en C:)
+                    // Creamos un objeto File que apunta a la unidad C:
+                    File disco = new File("C:");
+                    // Calculamos el espacio usado en el disco (total - libre), lo pasamos a MB
+                    long usadoMB = (disco.getTotalSpace() - disco.getFreeSpace()) / (1024 * 1024);
+                    Fila[6] = usadoMB + " MB usados";//Guarda el valor en columna 6
                     
                     int pid = -1;
                     if (sep.length > 1) {
